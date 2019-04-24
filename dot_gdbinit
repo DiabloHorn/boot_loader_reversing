@@ -1,0 +1,9 @@
+set architecture i8086
+target remote :1234
+set disassembly-flavor intel
+hbreak *0x7c00
+continue
+set confirm off
+add-symbol-file dap-main.o 0
+set confirm on
+source debug_cmds.py
