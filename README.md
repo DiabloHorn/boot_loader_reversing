@@ -25,10 +25,12 @@ Helper functions for gdb written in python with some useful commands, must be so
 
 `source debug_cmds.py`
 
-* ci \<mnemonic\>
-  * run application until it encounters the specified mnemonic `ci int`
-* pex_interrupt
+* brm-ci \<mnemonic\>
+  * run application until it encounters the specified mnemonic `brm-ci int`
+* brm-pexi
   * parses, executes and displays interrupt calls
+* brm-disassemble \[count\]
+  * disassembles (count=10 by default) and takes address segments into account `brm-disassemble 20`
 
 **wrap_directory.py**  
 Wraps calls to a target directory and the files within with fuse. Can be used to print read and write calls.  
