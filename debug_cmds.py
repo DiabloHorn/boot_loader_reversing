@@ -46,7 +46,6 @@ class DisassembleReal(gdb.Command):
         arch = frame.architecture()
         pc = gdb.selected_frame().pc()
         codesegment = int(gdb.parse_and_eval("$cs"))*16
-        codeoffset = codesegment + pc
         disassembly = arch.disassemble((codesegment+pc),count=int(arg))
         for i in (disassembly):
             gdb.write('0x{:08x}    {}\n'.format(i['addr'],i['asm']))
@@ -59,7 +58,7 @@ class PrintExecuteInterrupt(gdb.Command):
     """
 
     interrupt_mapping = {"0x13":"low level disk services"}
-    interrupt_13_functions = {"0x41":"Test Whether Extensions Are Available","0x42":"Extended Read Sectors From Drive"}
+    interrupt_13_functions = {"0x0":"Reset Disk System","0x2":"Read Sectors From Drive","0x41":"Test Whether Extensions Are Available","0x42":"Extended Read Sectors From Drive"}
 
     def __init__(self):
         super().__init__('brm-pexi', gdb.COMMAND_DATA, gdb.COMPLETE_NONE, False)
@@ -68,16 +67,39 @@ class PrintExecuteInterrupt(gdb.Command):
         frame = gdb.selected_frame()
         arch = frame.architecture()
         pc = frame.pc()
-        instruction = arch.disassemble(pc)[0]['asm']
+        codesegment = int(gdb.parse_and_eval("$cs"))*16
+        instruction = arch.disassemble(codesegment+pc)[0]['asm']
         if instruction.startswith('int '):
             interrupt_num = instruction.split(' ')[-1]
             if interrupt_num == '0x13':
                 gdb.write('called {} - {}\n'.format(interrupt_num,self.interrupt_mapping[interrupt_num]))
                 function_num = hex(gdb.parse_and_eval("$ah"))
-                if function_num == '0x41':
+                if function_num == '0x0':
                     gdb.write('Function {} - {}\n'.format(function_num,self.interrupt_13_functions[function_num]))
                     gdb.write('Function params: \n')
-                    gdb.write('\tDL (drive index) {}\n'.format(hex(gdb.parse_and_eval("$dl"))))
+                    gdb.write('\tDL (drive index) {}\n'.format(hex(gdb.parse_and_eval("$edx"))))
+                    gdb.execute('ni',to_string=True)
+                    gdb.write('Return values\n')
+                    gdb.write('\tCF (set if error) {}\n'.format(int(gdb.parse_and_eval("$eflags")) & 0x1))
+                    gdb.write('\tAH (return code) {}\n'.format(hex(gdb.parse_and_eval("$ah"))))
+                elif function_num == "0x2":
+                    gdb.write('Function {} - {}\n'.format(function_num,self.interrupt_13_functions[function_num]))
+                    gdb.write('Function params: \n')      
+                    gdb.write('\tAL (count sectors) {}\n'.format(hex(gdb.parse_and_eval("$al"))))
+                    gdb.write('\tCH (cylinder) {}\n'.format(hex(gdb.parse_and_eval("$ch"))))
+                    gdb.write('\tCL (sector) {}\n'.format(hex(gdb.parse_and_eval("$cl"))))
+                    gdb.write('\tDH (head) {}\n'.format(hex(gdb.parse_and_eval("$dh"))))
+                    gdb.write('\tDL (drive) {}\n'.format(hex(gdb.parse_and_eval("$edx"))))    
+                    gdb.write('\tES:BX (buffer) {}:{}\n'.format(hex(gdb.parse_and_eval("$es")),hex(gdb.parse_and_eval("$ebx"))))
+                    gdb.execute('ni',to_string=True)
+                    gdb.write('Return values\n')
+                    gdb.write('\tCF (set if error) {}\n'.format(int(gdb.parse_and_eval("$eflags")) & 0x1))
+                    gdb.write('\tAH (return code) {}\n'.format(hex(gdb.parse_and_eval("$ah"))))
+                    gdb.write('\tAL (read sectors) {}\n'.format(hex(gdb.parse_and_eval("$al"))))
+                elif function_num == '0x41':
+                    gdb.write('Function {} - {}\n'.format(function_num,self.interrupt_13_functions[function_num]))
+                    gdb.write('Function params: \n')
+                    gdb.write('\tDL (drive index) {}\n'.format(hex(gdb.parse_and_eval("$edx"))))
                     gdb.write('\tBX (signature) {}\n'.format(hex(gdb.parse_and_eval("$ebx"))))
                     gdb.execute('ni',to_string=True)
                     gdb.write('Return values\n')
@@ -88,7 +110,7 @@ class PrintExecuteInterrupt(gdb.Command):
                 elif function_num == '0x42':
                     gdb.write('Function {} - {}\n'.format(function_num,self.interrupt_13_functions[function_num]))
                     gdb.write('Function params: \n')
-                    gdb.write('\tDL (drive index) {}\n'.format(hex(gdb.parse_and_eval("$dl"))))
+                    gdb.write('\tDL (drive index) {}\n'.format(hex(gdb.parse_and_eval("$edx"))))
                     gdb.write('\tDS:SI (DAP) {}:{}\n'.format(hex(gdb.parse_and_eval("$ds")),hex(gdb.parse_and_eval("$si"))))
                     gdb.write('Print DAP structure using: \n')
                     gdb.write('\tset $dapstruct = *(struct dap *) ($ds*0x10+$si)\n')
