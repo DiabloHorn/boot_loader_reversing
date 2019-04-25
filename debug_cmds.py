@@ -1,9 +1,9 @@
 #Helper functions - https://diablohorn.com
 import gdb
 
-class ContinueI(gdb.Command):
+class ContinueIReal(gdb.Command):
     """
-    https://stackoverflow.com/a/31249378
+    base code: https://stackoverflow.com/a/31249378
     Continue until instruction with given opcode.
 
         ci OPCODE
@@ -14,7 +14,7 @@ class ContinueI(gdb.Command):
         ci mov
     """
     def __init__(self):
-        super().__init__('ci', gdb.COMMAND_BREAKPOINTS, gdb.COMPLETE_NONE, False)
+        super().__init__('brm-ci', gdb.COMMAND_BREAKPOINTS, gdb.COMPLETE_NONE, False)
 
     def invoke(self, arg, from_tty):
         if arg == '':
@@ -26,11 +26,31 @@ class ContinueI(gdb.Command):
                 frame = gdb.selected_frame()
                 arch = frame.architecture()
                 pc = gdb.selected_frame().pc()
-                instruction = arch.disassemble(pc)[0]['asm']
+                codesegment = int(gdb.parse_and_eval("$cs"))*16
+                instruction = arch.disassemble(codesegment+pc)[0]['asm']
                 if instruction.startswith(arg + ' '):
                     gdb.write(instruction + '\n')
-                    break
-ContinueI()
+                    break                
+ContinueIReal()
+
+class DisassembleReal(gdb.Command):
+    def __init__(self):
+        super().__init__('brm-disassemble', gdb.COMMAND_DATA, gdb.COMPLETE_NONE, False)
+
+    def invoke(self, arg, from_tty):
+        if arg == '':
+            arg = 10
+
+        thread = gdb.inferiors()[0].threads()[0]
+        frame = gdb.selected_frame()
+        arch = frame.architecture()
+        pc = gdb.selected_frame().pc()
+        codesegment = int(gdb.parse_and_eval("$cs"))*16
+        codeoffset = codesegment + pc
+        disassembly = arch.disassemble((codesegment+pc),count=int(arg))
+        for i in (disassembly):
+            gdb.write('0x{:08x}    {}\n'.format(i['addr'],i['asm']))
+DisassembleReal()
 
 class PrintExecuteInterrupt(gdb.Command):
     """
@@ -42,7 +62,7 @@ class PrintExecuteInterrupt(gdb.Command):
     interrupt_13_functions = {"0x41":"Test Whether Extensions Are Available","0x42":"Extended Read Sectors From Drive"}
 
     def __init__(self):
-        super().__init__('pex_interrupt', gdb.COMMAND_DATA, gdb.COMPLETE_NONE, False)
+        super().__init__('brm-pexi', gdb.COMMAND_DATA, gdb.COMPLETE_NONE, False)
 
     def invoke(self, arg, from_tty):
         frame = gdb.selected_frame()
