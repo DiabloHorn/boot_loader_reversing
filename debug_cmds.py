@@ -28,6 +28,8 @@ class ContinueIReal(gdb.Command):
                 pc = gdb.selected_frame().pc()
                 codesegment = int(gdb.parse_and_eval("$cs"))*16
                 instruction = arch.disassemble(codesegment+pc)[0]['asm']
+                if instruction.startswith('rep'):
+                    gdb.execute('ni', to_string=True)
                 if instruction.startswith(arg + ' '):
                     gdb.write(instruction + '\n')
                     break                
@@ -57,9 +59,9 @@ class PrintExecuteInterrupt(gdb.Command):
     Current execution must reside at int opcode
     """
 
-    interrupt_mapping = {"0x13":"low level disk services"}
+    interrupt_mapping = {"0x13":"low level disk services","0x15":"Miscellaneous system services"}
     interrupt_13_functions = {"0x0":"Reset Disk System","0x2":"Read Sectors From Drive","0x41":"Test Whether Extensions Are Available","0x42":"Extended Read Sectors From Drive"}
-
+    interrupt_15_functions = {"0x4f":"Keyboard Intercept"}
     def __init__(self):
         super().__init__('brm-pexi', gdb.COMMAND_DATA, gdb.COMPLETE_NONE, False)
 
@@ -119,6 +121,19 @@ class PrintExecuteInterrupt(gdb.Command):
                     gdb.write('\tx/10x $dapstruct.buffer_segment*0x10+$dapstruct.buffer_offset\n')
                 else:
                     gdb.write('Function number {} not implemented yet\n'.format(function_num))
+            elif interrupt_num == '0x15':
+                gdb.write('called {} - {}\n'.format(interrupt_num,self.interrupt_mapping[interrupt_num]))
+                function_num = hex(gdb.parse_and_eval("$ah"))
+                if function_num == '0x4f':
+                    gdb.write('Function {} - {}\n'.format(function_num,self.interrupt_15_functions[function_num]))
+                    gdb.write('Function params: \n')
+                    gdb.write('\tAL (hardware scan code) {}\n'.format(hex(gdb.parse_and_eval("$al"))))
+                    gdb.write('\tCF (set on entry) {}\n'.format(int(gdb.parse_and_eval("$eflags")) & 0x1))
+                    gdb.execute('ni',to_string=True)
+                    gdb.write('\tAL (hardware scan code) {}\n'.format(hex(gdb.parse_and_eval("$al"))))
+                    gdb.write('\tCF (clear if entry ignore) {}\n'.format(int(gdb.parse_and_eval("$eflags")) & 0x1))
+                else:
+                    gdb.write('Function number {} not implemented yet\n'.format(function_num))                                                               
             else:
                 gdb.write('Interrupt number {} not implemented yet\n'.format(interrupt_num))
         else:
