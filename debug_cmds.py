@@ -28,8 +28,6 @@ class ContinueIReal(gdb.Command):
                 pc = gdb.selected_frame().pc()
                 codesegment = int(gdb.parse_and_eval("$cs"))*16
                 instruction = arch.disassemble(codesegment+pc)[0]['asm']
-                if instruction.startswith('rep'):
-                    gdb.execute('ni', to_string=True)
                 if instruction.startswith(arg + ' '):
                     gdb.write(instruction + '\n')
                     break                

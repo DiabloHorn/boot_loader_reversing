@@ -9,6 +9,7 @@ The reference section contains multiple useful references
 * debug_cmds.py
 * dot_gdbinit
 * wrap_directory.py
+* emulate_partial.py
 
 ## using the files
 
@@ -36,6 +37,16 @@ Helper functions for gdb written in python with some useful commands, must be so
 Wraps calls to a target directory and the files within with fuse. Can be used to print read and write calls.  
 
 `python wrap_directory.py target mountpoint`
+
+**emulate_partial.py**  
+Creates an 'image' of a disk by storing only the read sectors, is also able to emulate boot process.  
+It defaults to 'imaging' mode when `--emulate` is not given.  
+
+Imaging mode:  
+    `python emulate_partial.py ~/disk-images/ mountpoint/`  
+
+Emulation mode:  
+    `python emulate_partial.py --emulate ~/disk-images/ mountpoint/`  
 
 ## References
 
